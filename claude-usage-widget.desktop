@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Claude Usage Widget
+Comment=Monitor de uso del plan Pro de claude.ai
+Exec=claude-usage-widget
+Icon=claude-usage-widget
+Categories=Utility;
+Terminal=false
+StartupNotify=false

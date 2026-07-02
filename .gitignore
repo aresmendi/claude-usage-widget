@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.pyo
+dist/
+build/
+*.egg-info/
+.venv/
+venv/
+*.AppImage
+*.exe
+AppDir/
+appimagetool
+config.json
+.pytest_cache/
+.atl/
+Imagen pegada.png

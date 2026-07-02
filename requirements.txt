@@ -1,0 +1,8 @@
+pystray==0.19.5
+browser-cookie3==0.19.1
+customtkinter==5.2.2
+plyer==2.1.0
+requests==2.32.3
+Pillow==10.4.0
+pytest==8.3.3
+responses==0.25.3
