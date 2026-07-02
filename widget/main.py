@@ -6,6 +6,7 @@ from widget.config import load_config
 from widget.polling import polling_loop
 from widget.state import EMPTY_STATE, UsageState
 from widget.ui.popup import PopupWindow
+from widget.ui.settings import open_settings
 from widget.ui.tray import TrayIcon
 
 logger = logging.getLogger(__name__)
@@ -38,11 +39,11 @@ class App:
 
         self._tray = TrayIcon(
             on_open=self._on_open,
-            on_settings=lambda: None,
+            on_settings=self._on_settings,
             on_quit=self.stop,
         )
         if self._root is not None:
-            self._popup = PopupWindow(self._root, self.config)
+            self._popup = PopupWindow(self._root, self.config, on_settings=self._on_settings)
 
         self._start_threads()
 
@@ -78,6 +79,10 @@ class App:
     def _on_open(self) -> None:
         if self._root and self._popup:
             self._root.after(0, self._popup.show)
+
+    def _on_settings(self) -> None:
+        if self._root:
+            self._root.after(0, lambda: open_settings(self._root, self.config))
 
     # ── Inicialización interna ───────────────────────────────────────────
 

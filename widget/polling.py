@@ -21,11 +21,14 @@ def polling_loop(
     """Bucle de polling. Corre en hilo daemon. Nunca eleva excepciones."""
     session_key: str | None = None
     org_id: str | None = None
-    alerted_for: str | None = None  # clave: five_hour_reset_at de la última alerta enviada
+    # No se usa five_hour_reset_at como clave de dedup: la API no garantiza que
+    # sea un timestamp fijo por ventana (puede recalcularse en cada respuesta),
+    # así que comparar contra él puede disparar una notificación en cada poll.
+    alerted: bool = False
 
     while not stop_event.is_set():
-        state, session_key, org_id, alerted_for = _poll_once(
-            config, session_key, org_id, alerted_for
+        state, session_key, org_id, alerted = _poll_once(
+            config, session_key, org_id, alerted
         )
         dispatch(state)
         stop_event.wait(interval)
@@ -35,8 +38,8 @@ def _poll_once(
     config: Config,
     session_key: str | None,
     org_id: str | None,
-    alerted_for: str | None,
-) -> tuple[UsageState, str | None, str | None, str | None]:
+    alerted: bool,
+) -> tuple[UsageState, str | None, str | None, bool]:
     """Ejecuta un ciclo de fetch + alerta. Nunca eleva excepciones."""
     try:
         session_key = session_key or cookie_reader.get_session_key(config.browser)
@@ -53,14 +56,15 @@ def _poll_once(
         )
 
         try:
-            if d.five_hour_pct >= config.alert_threshold and alerted_for != d.five_hour_reset_at:
-                notifier.notify(
-                    "Claude usage",
-                    f"Uso: {d.five_hour_pct:.0f}% · Reset: {d.five_hour_reset_at}",
-                )
-                alerted_for = d.five_hour_reset_at
-            if d.five_hour_pct < config.alert_threshold:
-                alerted_for = None
+            if d.five_hour_pct >= config.alert_threshold:
+                if not alerted:
+                    notifier.notify(
+                        "Claude usage",
+                        f"Uso: {d.five_hour_pct:.0f}% · Reset: {d.five_hour_reset_at}",
+                    )
+                    alerted = True
+            else:
+                alerted = False
         except Exception as exc:
             logger.warning("polling: error en notificación — %s", exc)
 
@@ -76,7 +80,7 @@ def _poll_once(
         logger.error("polling: excepción inesperada — %s", exc, exc_info=True)
         s = _error_state("error", str(exc))
 
-    return s, session_key, org_id, alerted_for
+    return s, session_key, org_id, alerted
 
 
 def _error_state(status: str, message: str = "") -> UsageState:

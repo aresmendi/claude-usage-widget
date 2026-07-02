@@ -114,7 +114,7 @@ class TestAlertDedup:
         reset = "2026-07-01T18:00:00Z"
         _, calls, _ = _run(3, [
             _ok(pct=71.0, reset_at=reset),  # → notify
-            _ok(pct=75.0, reset_at=reset),  # → no notify (mismo window)
+            _ok(pct=75.0, reset_at=reset),  # → no notify (ya alertado)
             _ok(pct=80.0, reset_at=reset),  # → no notify
         ])
         assert len(calls) == 1
@@ -122,18 +122,21 @@ class TestAlertDedup:
     def test_re_trigger_after_drop_below_threshold(self):
         reset = "2026-07-01T18:00:00Z"
         _, calls, _ = _run(3, [
-            _ok(pct=71.0, reset_at=reset),  # → notify; alerted_for = reset
-            _ok(pct=50.0, reset_at=reset),  # → drop below → alerted_for = None
+            _ok(pct=71.0, reset_at=reset),  # → notify; alerted = True
+            _ok(pct=50.0, reset_at=reset),  # → drop below → alerted = False
             _ok(pct=72.0, reset_at=reset),  # → notify de nuevo
         ])
         assert len(calls) == 2
 
-    def test_new_reset_window_triggers_new_notify(self):
-        _, calls, _ = _run(2, [
-            _ok(pct=71.0, reset_at="2026-07-01T18:00:00Z"),  # → notify; alerted_for = "18:00"
-            _ok(pct=71.0, reset_at="2026-07-01T23:00:00Z"),  # → nuevo window → notify
+    def test_no_repeat_notify_when_reset_at_shifts_without_pct_drop(self):
+        """resets_at no es una clave de dedup fiable (puede recalcularse cada poll);
+        mientras el % se mantenga por encima del umbral, no debe repetirse el aviso."""
+        _, calls, _ = _run(3, [
+            _ok(pct=71.0, reset_at="2026-07-01T18:00:00Z"),  # → notify
+            _ok(pct=72.0, reset_at="2026-07-01T18:00:47Z"),  # reset_at cambió, % sigue alto → no notify
+            _ok(pct=73.0, reset_at="2026-07-01T18:01:33Z"),  # reset_at cambió otra vez → no notify
         ])
-        assert len(calls) == 2
+        assert len(calls) == 1
 
 
 # ── org_id / session_key caching ──────────────────────────────────────────

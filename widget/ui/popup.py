@@ -1,5 +1,6 @@
 import logging
 from dataclasses import replace
+from typing import Callable, Optional
 
 from widget.config import Config, save_config
 from widget.formatting import bar_color_for_pct, format_time_ago, format_time_remaining
@@ -22,9 +23,10 @@ _BAR_WIDTH = 280
 class PopupWindow:
     """Popup flotante con barras de uso. Debe crearse y usarse desde el hilo principal."""
 
-    def __init__(self, root, config: Config) -> None:
+    def __init__(self, root, config: Config, on_settings: Optional[Callable] = None) -> None:
         self._root = root
         self._config = config
+        self._on_settings = on_settings
         self._window = None
 
         if not _UI_AVAILABLE:
@@ -95,7 +97,15 @@ class PopupWindow:
         self._lbl_updated = ctk.CTkLabel(
             footer, text="—", font=("", 10), text_color=_FG_MUTED
         )
-        self._lbl_updated.pack(anchor="w")
+        self._lbl_updated.pack(side="left", anchor="w")
+
+        if self._on_settings is not None:
+            # Acceso alternativo a Ajustes: en Linux el menú de la bandeja
+            # depende de la extensión AppIndicator, que no siempre está activa.
+            ctk.CTkButton(
+                footer, text="⚙", width=24, height=24, fg_color="transparent",
+                hover_color=_BG_ALT, command=self._on_settings,
+            ).pack(side="right")
 
     # ── Interfaz pública ─────────────────────────────────────────────────
 
